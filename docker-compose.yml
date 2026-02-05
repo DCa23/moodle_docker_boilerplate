@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   moodle:
-    image: php:8.3-apache
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: moodle_php
     ports:
       - "80:80"
@@ -20,21 +22,6 @@ services:
       - mysql
     networks:
       - moodle_network
-    command: >
-      bash -c "
-        apt-get update &&
-        apt-get install -y curl git unzip libzip-dev libpng-dev libjpeg-dev libfreetype6-dev libicu-dev libonig5 libonig-dev libxml2-dev &&
-        apt-get install python3 python3-pip libmysqlclient-dev libpq-dev python3-dev unixodbc-dev &&
-        docker-php-ext-configure gd --with-jpeg --with-freetype &&
-        docker-php-ext-configure intl &&
-        docker-php-ext-configure mbstring --disable-mbregex &&
-        docker-php-ext-install -j$(nproc) pdo_mysql mysqli gd zip intl mbstring soap exif &&
-        chown -R www-data:www-data /var/www/html &&
-        chown -R www-data:www-data /var/moodledata &&
-        curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer &&
-        a2enmod rewrite &&
-        apache2-foreground
-      "
 
   mysql:
     image: mysql:8.4
