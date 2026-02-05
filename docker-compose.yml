@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  moodle:
+    image: php:8.3-apache
+    container_name: moodle_php
+    ports:
+      - "80:80"
+    volumes:
+      - ./moodle:/var/www/html
+      - ../moodle_data:/var/moodledata
+      - ./config/php.ini:/usr/local/etc/php/conf.d/custom.ini
+      - ./config/apache.conf:/etc/apache2/sites-available/000-default.conf
+    environment:
+      - MOODLE_DBHOST=mysql
+      - MOODLE_DBNAME=moodle
+      - MOODLE_DBUSER=moodle
+      - MOODLE_DBPASS=moodle_password
+    depends_on:
+      - mysql
+    networks:
+      - moodle_network
+    command: >
+      bash -c "
+        apt-get update &&
+        apt-get install -y curl git unzip libzip-dev libpng-dev libjpeg-dev libfreetype6-dev libicu-dev libonig5 libonig-dev libxml2-dev &&
+        apt-get install python3 python3-pip libmysqlclient-dev libpq-dev python3-dev unixodbc-dev &&
+        docker-php-ext-configure gd --with-jpeg --with-freetype &&
+        docker-php-ext-configure intl &&
+        docker-php-ext-configure mbstring --disable-mbregex &&
+        docker-php-ext-install -j$(nproc) pdo_mysql mysqli gd zip intl mbstring soap exif &&
+        chown -R www-data:www-data /var/www/html &&
+        chown -R www-data:www-data /var/moodledata &&
+        curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer &&
+        a2enmod rewrite &&
+        apache2-foreground
+      "
+
+  mysql:
+    image: mysql:8.4
+    container_name: moodle_db
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=moodle
+      - MYSQL_USER=moodle
+      - MYSQL_PASSWORD=moodle_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+    networks:
+      - moodle_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+networks:
+  moodle_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
